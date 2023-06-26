@@ -41,5 +41,10 @@ RUN npm run build
 WORKDIR /app/leakage-analysis
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-# EXPOSE 8081
-ENTRYPOINT ["python3", "-m", "src.main"]
+
+# set up server
+EXPOSE 5000
+CMD ["python3", "-m", "flask", "--app", "src.server", "run", "--host=0.0.0.0"]
+
+# # EXPOSE 8081
+# ENTRYPOINT ["python3", "-m", "src.main"]

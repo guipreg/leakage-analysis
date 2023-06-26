@@ -7,3 +7,6 @@ tests/inputs/*.ir.py
 tests/Github_samples*
 __pycache__
 tmp
+
+# docker 
+uploads/

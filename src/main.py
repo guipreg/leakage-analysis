@@ -40,7 +40,7 @@ def time_decorator(func):
 
 @time_decorator
 def load_input(input_path):
-    with open(input_path) as f:
+    with open(input_path, encoding="utf-8") as f:
         code = f.read()
         tree = ast.parse(code)
     return tree
@@ -52,7 +52,7 @@ def ir_transform(tree, ir_path):
     new_tree = v.visit(tree)
     new_code = astunparse.unparse(new_tree)
     # print(new_code)
-    with open(ir_path, "w") as f:
+    with open(ir_path, "w", encoding="utf-8") as f:
         f.write(new_code)
     return new_tree
 
