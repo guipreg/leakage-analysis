@@ -4,82 +4,31 @@ from pygments.formatters import HtmlFormatter
 import os
 import pandas as pd
 from collections import defaultdict
+import json
 
-script_code = '''<script>
-    let highlighted = [];
-    function highlight_lines(lines) {
-        for (let line of highlighted) {
-            let ele = document.getElementById(String(line));
-            ele.style.backgroundColor = '';
-        }
-        highlighted = lines;
-        for (let line of highlighted) {
-            let ele = document.getElementById(String(line));
-            ele.style.backgroundColor = 'yellow';
-        }
-    }
-    let marked = [];
-    function mark_leak_lines(lines) {
-        for (let line of marked) {
-            let ele = document.getElementById(String(line));
-            ele.style.backgroundColor = '';
-        }
-        marked = lines;
-        for (let line of marked) {
-            let ele = document.getElementById(String(line));
-            ele.style.backgroundColor = ele.style.backgroundColor = 'lightgreen';
-        }
-    }
-    function show_infos(lines) {
-        for (let line of lines) {
-            let ele = document.getElementById(String(line) + "-info");
-            if (ele) {
-                ele.style.display = ele.style.display == 'none'? '': 'none'
-            }
-        }
-    }
-</script>
-    <style type="text/css">
-    .sum table {
-    font-family: arial, sans-serif;
-    border-collapse: collapse;
-    width: 100%;
-    }
+json_format = {
+  "pre-processing leakage":
+  {
+    "# detected": 0,
+    "location": [
 
-    .sum td, .sum th {
-    border: 1px solid #dddddd;
-    text-align: left;
-    padding: 8px;
-    }
+    ]
+  },
+  "overlap leakage":
+  {
+    "# detected": 0,
+    "location": [
 
-    .sum tr:hover {background-color: #D6EEEE;}
-</style>
-'''
+    ]
+  },
+  "no independence test data":
+  {
+    "# detected": 0,
+    "location": [
 
-SUMMARY_TEMP = '''<center>
-<table class="sum">
-  <tbody><tr>
-    <th>Leakage</th>
-    <th>#Detected</th>
-    <th>Locations</th>
-  </tr>
-  <tr>
-    <td>Pre-processing leakage</td>
-    <td>#NUMPRE</td>
-    <td>#LOCPRE</td>
-  </tr>
-  <tr>
-    <td>Overlap leakage</td>
-    <td>#NUMOVERLAP</td>
-    <td>#LOCOVERLAP</td>
-  </tr>
-  <tr>
-    <td>No independence test data</td>
-    <td>#NUMMULTI</td>
-    <td>#LOCMULTI</td>
-  </tr>
-</tbody></table></center>
-'''
+    ]
+  }
+}
 
 REMIND_STYLE = "background-color: green; color: white; border:none;"
 WARN_STYLE = "background-color: red; color: white; border:none;"
@@ -139,7 +88,9 @@ def load_info(fact_path, filename, labels, info, invos=()):
     df.apply(append_info, axis=1, result_type="reduce")
     return df
 
-def to_html(input_path, fact_path, html_path, lineno_map):
+
+# Reads input as html and outputs as json
+def to_json(input_path, fact_path, html_path, lineno_map):
     with open(input_path) as f:
         code = f.read()
     html = highlight(code, PythonLexer(), HtmlFormatter(full=True, linenos=True))
@@ -164,10 +115,6 @@ def to_html(input_path, fact_path, html_path, lineno_map):
 
     labels = defaultdict(dict) # for each line of code
 
-    # from invocation to html line number
-    def invo_idx(invo):
-        return int(invo2lineno[invo]) + st - 1
-
     # return unique invos
     def sorted_invo(invos):
         return tuple(sorted(set(invos)))
@@ -178,7 +125,7 @@ def to_html(input_path, fact_path, html_path, lineno_map):
     load_info(fact_path, "ValDataWithModel.csv", labels, "validation")
 
     # find train/test pairs
-    modelpairs = read_fact(fact_path, "Telemetry_ModelPair.csv") 
+    modelpairs = read_fact(fact_path, "Telemetry_ModelPair.csv")
     def append_info(row):
         labels[row['trainInvo']][("train-test", sorted_invo(row['testInvo'] + [row['trainInvo']]))] = None
         for testInvo in row['testInvo']:
@@ -193,14 +140,14 @@ def to_html(input_path, fact_path, html_path, lineno_map):
     finaloverlap = load_info(fact_path, "FinalOverlapLeak.csv", labels, "train_overlap")
 
     # pre-processing info
-    preleaks = read_fact(fact_path, "Telemetry_PreProcessingLeak.csv") 
+    preleaks = read_fact(fact_path, "Telemetry_PreProcessingLeak.csv")
     merged =  pd.merge(preleaks, leaksrc, left_on="src", right_on="from")
     def append_info(row):
         labels[row['testInvo']][("preprocessing_leak", sorted_invo(row['invo']))] = None
     merged.groupby("testInvo")['invo'].apply(list).reset_index().apply(append_info, axis=1, result_type='reduce')
 
     # multi-test info
-    multileaks1 = read_fact(fact_path, "Telemetry_MultiUseTestLeak.csv") 
+    multileaks1 = read_fact(fact_path, "Telemetry_MultiUseTestLeak.csv")
     def append_info(row):
         labels[row['invo']][("test_multiuse", sorted_invo(row['invo2'] + [row['invo']]))] = None
     multileaks1.groupby("invo")['invo2'].apply(list).reset_index().apply(append_info, axis=1, result_type='reduce')
@@ -208,32 +155,22 @@ def to_html(input_path, fact_path, html_path, lineno_map):
     # no test info
     load_info(fact_path, "NoTestData.csv", labels, "no_test")
 
-    # print('\n'.join(html_lines))
+    def format_locations(invos):
+        return [int(invo2lineno[invo]) for invo in invos]
 
-    # adding buttons
-    for invo, tags in labels.items():
-        for (label, invos) in tags.keys():
-            html_lines[invo_idx(invo)] +=  ' ' + translate_labels(label, invos, invo2lineno)
+    notests = read_fact(fact_path, "FinalNoTestDataWithMultiUse.csv")
 
-    def invos2buttons(invos):
-        return ' '.join([wrap_in_link(get_button(str(invo2lineno[invo])), str(invo2lineno[invo])) for invo in invos])
+    js = json_format
 
-    def gen_summary():
-        summary = SUMMARY_TEMP
-        summary = summary.replace("#NUMPRE", str(preleaks["testInvo"].nunique()))
-        summary = summary.replace("#LOCPRE", invos2buttons(sorted_invo(preleaks["testInvo"])))
-        summary = summary.replace("#NUMOVERLAP", str(finaloverlap["invo"].nunique()))
-        summary = summary.replace("#LOCOVERLAP", invos2buttons(sorted_invo(finaloverlap["invo"])))
+    js["pre-processing leakage"]["# detected"] = (preleaks["testInvo"].nunique())
+    js["pre-processing leakage"]["location"] = list(format_locations(sorted_invo(preleaks["testInvo"])))
+    js["overlap leakage"]["# detected"] = (finaloverlap["invo"].nunique())
+    js["overlap leakage"]["location"] = list(format_locations(sorted_invo(finaloverlap["invo"])))
+    js["no independence test data"]["# detected"] = (len(notests))
+    if len(notests) > 0:
+        js["no independence test data"]["location"] = list(format_locations(sorted_invo(valortests["invo"])))
+    else:
+        js["no independence test data"]["location"] = []
 
-        notests = read_fact(fact_path, "FinalNoTestDataWithMultiUse.csv")
-        summary = summary.replace("#NUMMULTI", str(len(notests)))
-        if len(notests) > 0:
-            summary = summary.replace("#LOCMULTI", invos2buttons(sorted_invo(valortests["invo"])))
-        else:
-            summary = summary.replace("#LOCMULTI",  "")
-        return summary
-
-    html_lines.insert(0, script_code + gen_summary())
-    html_lines[html_lines.index('pre { line-height: 125%; }')] = 'pre { line-height: 145%; }'
     with open(html_path, "w") as f:
-        f.write('\n'.join(html_lines))
+        json.dump(js, f)

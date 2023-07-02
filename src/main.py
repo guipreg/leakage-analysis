@@ -9,7 +9,7 @@ import traceback
 from .global_collector import GlobalCollector
 from . import factgen
 from .irgen import CodeTransformer
-from .render import to_html
+from .render import to_json
 from .config import configs
 
 def remove_files(folder):
@@ -101,7 +101,7 @@ def main(input_path):
     ir_path = input_path +".ir.py"
     json_path = input_path + ".json"
     fact_path = input_path[:-3] + "-fact"
-    html_path = input_path[:-3] + ".html"
+    result_path = input_path[:-3] + "_results.json"
     t = [None]*6
 
     tree, t[0] = load_input(input_path)
@@ -147,12 +147,14 @@ def main(input_path):
         print("Failed to analyze: " + input_path)
         return "Failed to analyze" 
 
-    if configs.output_flag:
-        print("Converting notebooks to html...")
-        try:
-            to_html(input_path, fact_path, html_path, lineno_map)
-        except:
-            print("Conversion failed!")
+    # if configs.output_flag:
+    #     print("Converting notebooks to html...")
+    #     try:
+    #         to_html(input_path, fact_path, html_path, lineno_map)
+    #     except:
+    #         print("Conversion failed!")
+
+    to_json(input_path, fact_path, result_path, lineno_map)
     
     print("Success!\t{:.2f}\t{:.2f}\t{:.2f}\t{:.2f}\t".format(t[0]+t[1]+t[3]+t[4], t[2], t[5], sum(t)))
     return t
