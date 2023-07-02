@@ -11,6 +11,7 @@ from . import factgen
 from .irgen import CodeTransformer
 from .render import to_json
 from .config import configs
+from jupyter_notebook_parser import JupyterNotebookParser
 
 def remove_files(folder):
     for filename in os.listdir(folder):
@@ -39,10 +40,36 @@ def time_decorator(func):
     return wrapper_function
 
 @time_decorator
-def load_input(input_path):
-    with open(input_path, encoding="utf-8") as f:
-        code = f.read()
-        tree = ast.parse(code)
+def load_input(input_path, test_path):
+    if input_path.endswith('.ipynb'):
+
+        parsed = JupyterNotebookParser(input_path)
+        source = parsed.get_code_cell_sources()
+        new_code = ''
+
+        for pieces in source:
+            lines = pieces.raw_source.split('\n')
+            cleaned_lines_2 = []
+            for line in lines:
+                if '%' in line:
+                    line_indentation = line[:len(line) - len(line.lstrip())]
+                    line = line_indentation + "pass"
+
+                cleaned_lines_2.append(line)
+
+            cleaned_source_code = '\n'.join(cleaned_lines_2)
+            new_code += cleaned_source_code + '\n'
+
+        with open(test_path, 'w') as test_file:
+            test_file.write(new_code)
+
+        tree = ast.parse(new_code)
+
+    else:
+        with open(input_path, encoding="utf-8") as f:
+            code = f.read()
+            tree = ast.parse(code)
+
     return tree
 
 @time_decorator
@@ -100,11 +127,13 @@ def datalog_analysis(fact_path):
 def main(input_path):
     ir_path = input_path +".ir.py"
     json_path = input_path + ".json"
-    fact_path = input_path[:-3] + "-fact"
-    result_path = input_path[:-3] + "_results.json"
+    fact_path = os.path.splitext(input_path)[0] + "-fact"
+    result_path = os.path.splitext(input_path)[0] + "_results.json"
+    test_path = os.path.splitext(input_path)[0] + "_test.py"
+
     t = [None]*6
 
-    tree, t[0] = load_input(input_path)
+    tree, t[0] = load_input(input_path, test_path)
     if t[0] == -1:
         print("Failed to parse: " + input_path)
         return "Failed to parse"
@@ -120,7 +149,7 @@ def main(input_path):
         return "Failed to infer types" 
 
     
-    newtree, t[3] = load_input(ir_path)
+    newtree, t[3] = load_input(ir_path, test_path)
     if t[3] == -1:
         print("Failed to parse transformed file: " + input_path)
         return "Failed to parse transformed file"
