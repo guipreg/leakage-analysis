@@ -51,7 +51,7 @@ def load_input(input_path, test_path):
             lines = pieces.raw_source.split('\n')
             cleaned_lines_2 = []
             for line in lines:
-                if '%' in line:
+                if line.strip().startswith('%'):
                     line_indentation = line[:len(line) - len(line.lstrip())]
                     line = line_indentation + "pass"
 
