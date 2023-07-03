@@ -54,6 +54,6 @@ def analyze(filename):
         return "Error occured during analysis", 500
     htmlfilepath = os.path.join(app.config["UPLOAD_FOLDER"], f"{filename[:-6]}_results.json")
     if (os.path.isfile(htmlfilepath)):
-        return Response(open(htmlfilepath, "r"), mimetype='application/zip')
+        return Response(open(htmlfilepath, "r"), mimetype='application/json')
     else:
         return "No report file produced", 500
