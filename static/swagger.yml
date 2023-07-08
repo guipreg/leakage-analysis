@@ -1,0 +1,118 @@
+openapi: 3.0.0
+info:
+  title: leakage-analysis API
+  version: 1.0.0
+servers:
+  - url: 'http://localhost:5000'
+paths:
+  /upload:
+    post:
+      tags:
+        - General
+      summary: Upload file to server
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  description: Notebook file to upload
+                  format: binary
+      responses:
+        '200':
+          description: Successful response
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: notebook.ipynb
+        '400':
+          description: Bad request response
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                no-file-sent:
+                  summary: No file sent
+                  value: No file sent
+                file-not-allowd:
+                  summary: File not allowed
+                  value: File not allowed
+
+  /analyze/{filename}:
+    get:
+      tags:
+        - General
+      summary: Analyze uploaded file on server
+      parameters:
+        - in: path
+          name: filename
+          schema:
+            type: string
+            pattern: .*\.?(?:ipynb|py)
+          required: true
+          description: Filename of uploaded file
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  "pre-processing leakage":
+                    type: object
+                    properties:
+                      "# detected":
+                        type: integer
+                        example: 0
+                      location:
+                        type: array
+                        items:
+                          type: integer
+                        example: []
+                  "overlap leakage":
+                    type: object
+                    properties:
+                      "# detected":
+                        type: integer
+                        example: 0
+                      location:
+                        type: array
+                        items:
+                          type: integer
+                        example: []
+                  "no independence test data":
+                    type: object
+                    properties:
+                      "# detected":
+                        type: integer
+                        example: 0
+                      location:
+                        type: array
+                        items:
+                          type: integer
+                        example: []
+        '404':
+          description: Not found response
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: File not found
+        '500':
+          description: Internal error server response
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                error-analysis:
+                  summary: Error ocurred during analysis
+                  value: Error ocurred during analysis
+                no-report:
+                  summary: No report produced
+                  value: No report produced

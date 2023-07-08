@@ -5,4 +5,6 @@ numpy
 scikit-learn
 imblearn
 flask
+flask-swagger-ui
+pyyaml
 jupyter_notebook_parser
