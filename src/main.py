@@ -1,5 +1,7 @@
 import os, sys
 import ast
+import shlex
+import subprocess
 import astunparse
 import json
 import shutil
@@ -42,7 +44,6 @@ def time_decorator(func):
 @time_decorator
 def load_input(input_path, test_path):
     if input_path.endswith('.ipynb'):
-
         parsed = JupyterNotebookParser(input_path)
         source = parsed.get_code_cell_sources()
         new_code = ''
@@ -51,7 +52,8 @@ def load_input(input_path, test_path):
             lines = pieces.raw_source.split('\n')
             cleaned_lines_2 = []
             for line in lines:
-                if line.strip().startswith('%'):
+                strip = line.strip()
+                if strip.startswith('%') or strip.startswith('!') or strip.startswith('pip') or strip.startswith('python'):
                     line_indentation = line[:len(line) - len(line.lstrip())]
                     line = line_indentation + "pass"
 
@@ -63,8 +65,12 @@ def load_input(input_path, test_path):
         with open(test_path, 'w') as test_file:
             test_file.write(new_code)
 
-        tree = ast.parse(new_code)
+        subprocess.run(f"2to3 -n -w {shlex.quote(test_path)}", shell=True)
 
+        with open(test_path) as test_file:
+            new_code = test_file.read()
+
+        tree = ast.parse(new_code)
     else:
         with open(input_path, encoding="utf-8") as f:
             code = f.read()
