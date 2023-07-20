@@ -1,0 +1,9 @@
+# Ignore everything
+**
+
+# ... except for dependencies and source
+!pyright/
+!requirements.txt
+!src/
+!static/
+!tests/

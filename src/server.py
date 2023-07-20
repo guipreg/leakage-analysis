@@ -7,19 +7,19 @@ from flask_swagger_ui import get_swaggerui_blueprint
 
 UPLOAD_FOLDER = "/var/www/uploads"
 ALLOWED_EXTENSIONS = {"ipynb"}
-SWAGGER_URL = '/api/docs'
-API_URL = './static/swagger.yml'
+SWAGGER_URL = "/api/docs"
+API_URL = "./static/swagger.yml"
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-swagger_yml = load(open(API_URL, 'r'), Loader=Loader)
+swagger_yml = load(open(API_URL, "r"), Loader=Loader)
 swaggerui_blueprint = get_swaggerui_blueprint(
     SWAGGER_URL,
     API_URL,
-    config = {
-        'app_name': "leakage-analysis API",
-        'spec': swagger_yml,
+    config={
+        "app_name": "leakage-analysis API",
+        "spec": swagger_yml,
     },
 )
 app.register_blueprint(swaggerui_blueprint)
@@ -52,8 +52,10 @@ def analyze(filename):
         main(filepath)
     except Exception as e:
         return "Error occured during analysis", 500
-    htmlfilepath = os.path.join(app.config["UPLOAD_FOLDER"], f"{filename[:-6]}_results.json")
-    if (os.path.isfile(htmlfilepath)):
-        return Response(open(htmlfilepath, "r"), mimetype='application/json')
+    htmlfilepath = os.path.join(
+        app.config["UPLOAD_FOLDER"], f"{filename[:-6]}_results.json"
+    )
+    if os.path.isfile(htmlfilepath):
+        return Response(open(htmlfilepath, "r"), mimetype="application/json")
     else:
         return "No report file produced", 500
