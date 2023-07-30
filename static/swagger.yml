@@ -5,11 +5,11 @@ info:
 servers:
   - url: 'http://localhost:5000'
 paths:
-  /upload:
+  /analyze:
     post:
       tags:
         - General
-      summary: Upload file to server
+      summary: Analyze file
       requestBody:
         content:
           multipart/form-data:
@@ -22,97 +22,94 @@ paths:
                   format: binary
       responses:
         '200':
-          description: Successful response
-          content:
-            text/plain:
-              schema:
-                type: string
-                example: notebook.ipynb
-        '400':
-          description: Bad request response
-          content:
-            text/plain:
-              schema:
-                type: string
-              examples:
-                no-file-sent:
-                  summary: No file sent
-                  value: No file sent
-                file-not-allowd:
-                  summary: File not allowed
-                  value: File not allowed
-
-  /analyze/{filename}:
-    get:
-      tags:
-        - General
-      summary: Analyze uploaded file on server
-      parameters:
-        - in: path
-          name: filename
-          schema:
-            type: string
-            pattern: .*\.?(?:ipynb|py)
-          required: true
-          description: Filename of uploaded file
-      responses:
-        '200':
-          description: Successful response
+          description: Successful Response
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  "pre-processing leakage":
-                    type: object
-                    properties:
-                      "# detected":
-                        type: integer
-                        example: 0
-                      location:
-                        type: array
-                        items:
-                          type: integer
-                        example: []
-                  "overlap leakage":
-                    type: object
-                    properties:
-                      "# detected":
-                        type: integer
-                        example: 0
-                      location:
-                        type: array
-                        items:
-                          type: integer
-                        example: []
-                  "no independence test data":
-                    type: object
-                    properties:
-                      "# detected":
-                        type: integer
-                        example: 0
-                      location:
-                        type: array
-                        items:
-                          type: integer
-                        example: []
-        '404':
-          description: Not found response
+                $ref: '#/components/schemas/AnalysisResult'
+        '400':
+          description: Bad Request Response
           content:
-            text/plain:
+            application/json:
               schema:
-                type: string
-                example: File not found
-        '500':
-          description: Internal error server response
-          content:
-            text/plain:
-              schema:
-                type: string
+                $ref: '#/components/schemas/Error'
               examples:
-                error-analysis:
-                  summary: Error ocurred during analysis
-                  value: Error ocurred during analysis
-                no-report:
-                  summary: No report produced
-                  value: No report produced
+                NoFileSent:
+                  $ref: '#/components/examples/NoFileSentError'
+                FileNotAllowed:
+                  $ref: '#/components/examples/FileNotAllowedError'
+        '500':
+          description: Internal Error Server Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                FileNotUploaded:
+                  $ref: '#/components/examples/FileNotUploadedError'
+                ErrorOccuredDuringAnalysis:
+                  $ref: '#/components/examples/ErrorOccuredDuringAnalysisError'
+                NoResultProduced:
+                  $ref: '#/components/examples/NoResultProducedError'
+components:
+  schemas:
+    AnalysisResult:
+      type: object
+      properties:
+        "pre-processing leakage":
+          type: object
+          properties:
+            "# detected":
+              type: integer
+            location:
+              type: array
+              items:
+                type: integer
+        "overlap leakage":
+          type: object
+          properties:
+            "# detected":
+              type: integer
+            location:
+              type: array
+              items:
+                type: integer
+        "no independence test data":
+          type: object
+          properties:
+            "# detected":
+              type: integer
+            location:
+              type: array
+              items:
+                type: integer
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+  examples:
+    NoFileSentError:
+      summary: No file sent
+      value:
+        message: No file sent
+    FileNotAllowedError:
+      summary: File not allowed
+      value:
+        message: File not allowed
+    FileNotUploadedError:
+      summary: File could not be uploaded
+      value:
+        message: File could not be uploaded
+    FileNotSavedError:
+      summary: File could not be saved
+      value:
+        message: File could not be saved
+    ErrorOccuredDuringAnalysisError:
+      summary: Error occured during analysis
+      value:
+        message: Error occured during analysis
+    NoResultProducedError:
+      summary: No result was produced from analysis
+      value:
+        message: No result was produced from analysis
