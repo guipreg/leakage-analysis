@@ -52,7 +52,6 @@ def upload_file(req):
     file = req.files["file"]
     if not allowed_file(file.filename):
         raise APIError("File not allowed", 400)
-    # TODO: save in parent folder ?
     filename = secure_filename(file.filename)
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     file.save(filepath)
