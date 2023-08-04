@@ -67,7 +67,6 @@ def analyze_file(filename):
         main(filepath)
     except Exception as e:
         raise APIError("Error occured during analysis", 500) from e
-
     if filename.endswith("ipynb"):
         jsonpath = os.path.join(
             app.config["UPLOAD_FOLDER"], f"{filename[:-6]}_results.json"

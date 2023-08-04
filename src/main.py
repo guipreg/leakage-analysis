@@ -1,5 +1,7 @@
 import os, sys
 import ast
+import shlex
+import subprocess
 import astunparse
 import json
 import shutil
@@ -9,8 +11,9 @@ import traceback
 from .global_collector import GlobalCollector
 from . import factgen
 from .irgen import CodeTransformer
-from .render import to_html
+from .render import to_json
 from .config import configs
+from jupyter_notebook_parser import JupyterNotebookParser
 
 def remove_files(folder):
     for filename in os.listdir(folder):
@@ -39,10 +42,40 @@ def time_decorator(func):
     return wrapper_function
 
 @time_decorator
-def load_input(input_path):
-    with open(input_path) as f:
-        code = f.read()
-        tree = ast.parse(code)
+def load_input(input_path, test_path):
+    if input_path.endswith('.ipynb'):
+        parsed = JupyterNotebookParser(input_path)
+        source = parsed.get_code_cell_sources()
+        new_code = ''
+
+        for pieces in source:
+            lines = pieces.raw_source.split('\n')
+            cleaned_lines_2 = []
+            for line in lines:
+                strip = line.strip()
+                if strip.startswith('%') or strip.startswith('!') or strip.startswith('pip') or strip.startswith('python'):
+                    line_indentation = line[:len(line) - len(line.lstrip())]
+                    line = line_indentation + "pass"
+
+                cleaned_lines_2.append(line)
+
+            cleaned_source_code = '\n'.join(cleaned_lines_2)
+            new_code += cleaned_source_code + '\n'
+
+        with open(test_path, 'w') as test_file:
+            test_file.write(new_code)
+
+        subprocess.run(f"2to3 -n -w {shlex.quote(test_path)}", shell=True)
+
+        with open(test_path) as test_file:
+            new_code = test_file.read()
+
+        tree = ast.parse(new_code)
+    else:
+        with open(input_path, encoding="utf-8") as f:
+            code = f.read()
+            tree = ast.parse(code)
+
     return tree
 
 @time_decorator
@@ -52,7 +85,7 @@ def ir_transform(tree, ir_path):
     new_tree = v.visit(tree)
     new_code = astunparse.unparse(new_tree)
     # print(new_code)
-    with open(ir_path, "w") as f:
+    with open(ir_path, "w", encoding="utf-8") as f:
         f.write(new_code)
     return new_tree
 
@@ -100,11 +133,13 @@ def datalog_analysis(fact_path):
 def main(input_path):
     ir_path = input_path +".ir.py"
     json_path = input_path + ".json"
-    fact_path = input_path[:-3] + "-fact"
-    html_path = input_path[:-3] + ".html"
+    fact_path = os.path.splitext(input_path)[0] + "-fact"
+    result_path = os.path.splitext(input_path)[0] + "_results.json"
+    test_path = os.path.splitext(input_path)[0] + "_test.py"
+
     t = [None]*6
 
-    tree, t[0] = load_input(input_path)
+    tree, t[0] = load_input(input_path, test_path)
     if t[0] == -1:
         print("Failed to parse: " + input_path)
         return "Failed to parse"
@@ -120,7 +155,7 @@ def main(input_path):
         return "Failed to infer types" 
 
     
-    newtree, t[3] = load_input(ir_path)
+    newtree, t[3] = load_input(ir_path, test_path)
     if t[3] == -1:
         print("Failed to parse transformed file: " + input_path)
         return "Failed to parse transformed file"
@@ -147,12 +182,14 @@ def main(input_path):
         print("Failed to analyze: " + input_path)
         return "Failed to analyze" 
 
-    if configs.output_flag:
-        print("Converting notebooks to html...")
-        try:
-            to_html(input_path, fact_path, html_path, lineno_map)
-        except:
-            print("Conversion failed!")
+    # if configs.output_flag:
+    #     print("Converting notebooks to html...")
+    #     try:
+    #         to_html(input_path, fact_path, html_path, lineno_map)
+    #     except:
+    #         print("Conversion failed!")
+
+    to_json(input_path, fact_path, result_path, lineno_map)
     
     print("Success!\t{:.2f}\t{:.2f}\t{:.2f}\t{:.2f}\t".format(t[0]+t[1]+t[3]+t[4], t[2], t[5], sum(t)))
     return t

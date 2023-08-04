@@ -1,0 +1,115 @@
+openapi: 3.0.0
+info:
+  title: leakage-analysis API
+  version: 1.0.0
+servers:
+  - url: 'http://localhost:5000'
+paths:
+  /analyze:
+    post:
+      tags:
+        - General
+      summary: Analyze file
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  description: Notebook file to upload
+                  format: binary
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResult'
+        '400':
+          description: Bad Request Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                NoFileSent:
+                  $ref: '#/components/examples/NoFileSentError'
+                FileNotAllowed:
+                  $ref: '#/components/examples/FileNotAllowedError'
+        '500':
+          description: Internal Error Server Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                FileNotUploaded:
+                  $ref: '#/components/examples/FileNotUploadedError'
+                ErrorOccuredDuringAnalysis:
+                  $ref: '#/components/examples/ErrorOccuredDuringAnalysisError'
+                NoResultProduced:
+                  $ref: '#/components/examples/NoResultProducedError'
+components:
+  schemas:
+    AnalysisResult:
+      type: object
+      properties:
+        "pre-processing leakage":
+          type: object
+          properties:
+            "# detected":
+              type: integer
+            location:
+              type: array
+              items:
+                type: integer
+        "overlap leakage":
+          type: object
+          properties:
+            "# detected":
+              type: integer
+            location:
+              type: array
+              items:
+                type: integer
+        "no independence test data":
+          type: object
+          properties:
+            "# detected":
+              type: integer
+            location:
+              type: array
+              items:
+                type: integer
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+  examples:
+    NoFileSentError:
+      summary: No file sent
+      value:
+        message: No file sent
+    FileNotAllowedError:
+      summary: File not allowed
+      value:
+        message: File not allowed
+    FileNotUploadedError:
+      summary: File could not be uploaded
+      value:
+        message: File could not be uploaded
+    FileNotSavedError:
+      summary: File could not be saved
+      value:
+        message: File could not be saved
+    ErrorOccuredDuringAnalysisError:
+      summary: Error occured during analysis
+      value:
+        message: Error occured during analysis
+    NoResultProducedError:
+      summary: No result was produced from analysis
+      value:
+        message: No result was produced from analysis

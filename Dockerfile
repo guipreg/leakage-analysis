@@ -33,7 +33,7 @@ COPY . /app/leakage-analysis/
 # set up pyright
 WORKDIR /app/leakage-analysis/pyright
 RUN npm install --g lerna@4.0.0
-RUN npm install 
+RUN npm install
 WORKDIR /app/leakage-analysis/pyright/packages/pyright
 RUN npm run build
 
@@ -41,5 +41,10 @@ RUN npm run build
 WORKDIR /app/leakage-analysis
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-# EXPOSE 8081
-ENTRYPOINT ["python3", "-m", "src.main"]
+
+# set up server
+EXPOSE 5000
+CMD ["python3", "-m", "flask", "--app", "src.server", "run", "--host=0.0.0.0", "--debug"]
+
+# # EXPOSE 8081
+# ENTRYPOINT ["python3", "-m", "src.main"]
