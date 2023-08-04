@@ -6,7 +6,7 @@ from flask_swagger_ui import get_swaggerui_blueprint
 from .main import main
 
 UPLOAD_FOLDER = "/var/www/uploads"
-ALLOWED_EXTENSIONS = {"ipynb"}
+ALLOWED_EXTENSIONS = {"ipynb", "py"}
 SWAGGER_URL = "/api/docs"
 API_URL = "./static/swagger.yml"
 
@@ -67,9 +67,14 @@ def analyze_file(filename):
         main(filepath)
     except Exception as e:
         raise APIError("Error occured during analysis", 500) from e
-    jsonpath = os.path.join(
-        app.config["UPLOAD_FOLDER"], f"{filename[:-6]}_results.json"
-    )
+    if filename.endswith("ipynb"):
+        jsonpath = os.path.join(
+            app.config["UPLOAD_FOLDER"], f"{filename[:-6]}_results.json"
+        )
+    elif filename.endswith("py"):
+        jsonpath = os.path.join(
+            app.config["UPLOAD_FOLDER"], f"{filename[:-3]}_results.json"
+        )
     if not os.path.isfile(jsonpath):
         raise APIError("No result was produced from analysis", 500)
     return Response(open(jsonpath, "r", encoding="utf-8"), mimetype="application/json")
